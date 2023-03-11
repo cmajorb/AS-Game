@@ -2,11 +2,8 @@ import io from 'socket.io-client'
 import { Player } from '../objects/player'
 
 function addPlayer(self, playerInfo, camera) {
-  self.currentPlayer = self.physics.add.image(playerInfo.x, playerInfo.y, playerInfo.type).setOrigin(0.5, 0.5).setDisplaySize(MainScene.PLAYER_SIZE, MainScene.PLAYER_SIZE);
-  const player = new Player(self.currentPlayer, new Phaser.Math.Vector2(6, 6));
-  camera.startFollow(self.currentPlayer);
-
-  self.currentPlayer.setMaxVelocity(300);
+  self.player = new Player(self, playerInfo);
+  camera.startFollow(self.player);
 }
 function addOtherPlayers(self, playerInfo) {
   const otherPlayer = self.add.sprite(playerInfo.x, playerInfo.y, playerInfo.type).setOrigin(0.5, 0.5).setDisplaySize(MainScene.PLAYER_SIZE, MainScene.PLAYER_SIZE);
@@ -15,15 +12,15 @@ function addOtherPlayers(self, playerInfo) {
 }
 
 export default class MainScene extends Phaser.Scene {
- 
+
   static readonly TILE_SIZE = 33;
   static readonly PLAYER_SIZE = 50;
   otherPlayers: any
   socket: SocketIOClient.Socket
   target: Phaser.Math.Vector2
-  currentPlayer: any
+  player: Player
 
-    constructor() {
+  constructor() {
     super('MainScene')
   }
 
@@ -43,15 +40,13 @@ export default class MainScene extends Phaser.Scene {
 
 
     const camera = this.cameras.main;
-    camera.setBounds(0,0, map.widthInPixels, map.heightInPixels);
+    camera.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
     var self = this;
     this.socket = io();
     this.otherPlayers = this.physics.add.group();
     this.socket.on('currentPlayers', function (players) {
       Object.keys(players).forEach(function (id) {
-        console.log(id);
-        console.log(players[id]);
         if (players[id].playerId === self.socket.id) {
           addPlayer(self, players[id], camera);
         } else {
@@ -70,57 +65,35 @@ export default class MainScene extends Phaser.Scene {
       });
     });
 
-
     this.target = new Phaser.Math.Vector2();
 
     this.input.on('pointerup', (pointer) => {
-      console.log("click");
-
       this.target.x = pointer.x + camera.worldView.x;
-      this.target.y = pointer.y + camera.worldView.y + MainScene.PLAYER_SIZE/2;
-      
-      // Start moving our cat towards the target
-      this.physics.moveToObject(this.currentPlayer, this.target, 300);
+      this.target.y = pointer.y + camera.worldView.y;
+      this.physics.moveToObject(this.player, this.target, 300);
     });
 
     this.socket.on('playerMoved', function (playerInfo) {
       self.otherPlayers.getChildren().forEach(function (otherPlayer) {
         if (playerInfo.playerId === otherPlayer.playerId) {
-          otherPlayer.setRotation(playerInfo.rotation);
           otherPlayer.setPosition(playerInfo.x, playerInfo.y);
         }
       });
-    });   
+    });
   }
 
-  update(){
-    if (this.currentPlayer) {
-      if (this.currentPlayer.body.speed > 0) {
-        // Calculate it's distance to the target
-        const d = Phaser.Math.Distance.Between(this.currentPlayer.x, this.currentPlayer.y, this.target.x, this.target.y);
-
-        // If it's close enough,
+  update() {
+    if (this.player && this.player.body instanceof Phaser.Physics.Arcade.Body) {
+      if (this.player.body.speed > 0) {
+        const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.target.x, this.target.y);
         if (d < 10) {
-          // Reset it's body so it stops, hide our arrow
-          this.currentPlayer.body.reset(this.target.x, this.target.y);
+          this.player.body.reset(this.target.x, this.target.y);
         }
       }
-      // this.physics.world.wrap(this.ship, 5);
-
-      var x = this.currentPlayer.x;
-      var y = this.currentPlayer.y;
-      var r = this.currentPlayer.rotation;
-      if (this.currentPlayer.oldPosition && (x !== this.currentPlayer.oldPosition.x || y !== this.currentPlayer.oldPosition.y || r !== this.currentPlayer.oldPosition.rotation)) {
-        this.socket.emit('playerMovement', { x: this.currentPlayer.x, y: this.currentPlayer.y, rotation: this.currentPlayer.rotation });
+      if (this.player.hasMoved()) {
+        this.socket.emit('playerMovement', { x: this.player.x, y: this.player.y });
       }
-      // save old position data
-      this.currentPlayer.oldPosition = {
-        x: this.currentPlayer.x,
-        y: this.currentPlayer.y,
-        rotation: this.currentPlayer.rotation
-      };
+      this.player.oldPosition = new Phaser.Math.Vector2(this.player.x, this.player.y);
     }
-    
   }
-
 }

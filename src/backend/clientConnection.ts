@@ -5,7 +5,6 @@ interface UserData {
   playerId: string,
   x: number,
   y:number,
-  rotation: number,
   type: string,
   health: number
 }
@@ -17,11 +16,8 @@ export function clientConnection(io: any) {
   io.on('connection', function (socket) {
     console.log('a user connected');
     currentUsers[socket.id] = {
-      rotation: 0,
-      // x: Math.floor(Math.random() * 700) + 50,
-      // y: Math.floor(Math.random() * 500) + 50,
-      x: 0,
-      y: 0,
+      x: Math.floor(Math.random() * 700) + 50,
+      y: Math.floor(Math.random() * 500) + 50,
       playerId: socket.id,
       type: (Math.floor(Math.random() * 2) == 0) ? 'alien1' : 'alien2',
       health: 3
@@ -45,7 +41,6 @@ export function clientConnection(io: any) {
     socket.on('playerMovement', function (movementData) {
       currentUsers[socket.id].x = movementData.x;
       currentUsers[socket.id].y = movementData.y;
-      currentUsers[socket.id].rotation = movementData.rotation;
       // emit a message to all players about the player that moved
       socket.broadcast.emit('playerMoved', currentUsers[socket.id]);
     });

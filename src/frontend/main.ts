@@ -19,5 +19,3 @@ const config: Phaser.Types.Core.GameConfig = {
 window.addEventListener('load', () => {
   let game = new Phaser.Game(config)
 })
-
-//
