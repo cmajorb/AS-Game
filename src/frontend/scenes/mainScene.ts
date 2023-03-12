@@ -29,15 +29,17 @@ export default class MainScene extends Phaser.Scene {
     this.load.image('alien1', 'assets/culug.png');
     this.load.image('alien2', 'assets/pufcat.png');
     this.load.image("tiles", "assets/tilesets/example_tileset.png");
-    this.load.tilemapCSV("map", "assets/mainmap.csv");
+    this.load.tilemapTiledJSON("map", "assets/tilesets/map.json");
   }
 
   create() {
 
     const map = this.make.tilemap({ key: "map", tileWidth: MainScene.TILE_SIZE, tileHeight: MainScene.TILE_SIZE });
-    const tileset = map.addTilesetImage("tiles");
+    const tileset = map.addTilesetImage("example_tileset", "tiles");
     const groundLayer = map.createLayer(0, tileset, 0, 0);
 
+    map.setCollisionByProperty({ collides: true });
+    // groundLayer.renderDebug(this.add.graphics());
 
     const camera = this.cameras.main;
     camera.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -49,6 +51,8 @@ export default class MainScene extends Phaser.Scene {
       Object.keys(players).forEach(function (id) {
         if (players[id].playerId === self.socket.id) {
           addPlayer(self, players[id], camera);
+          self.physics.add.collider(self.player, groundLayer);
+
         } else {
           addOtherPlayers(self, players[id]);
         }
