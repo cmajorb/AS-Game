@@ -1,5 +1,6 @@
 import io from 'socket.io-client'
 import { Player } from '../objects/player'
+import { GameState } from '../../types'
 
 function addPlayer(self, playerInfo, camera) {
   self.player = new Player(self, playerInfo);
@@ -9,6 +10,8 @@ function addOtherPlayers(self, playerInfo) {
   const otherPlayer = self.add.sprite(playerInfo.x, playerInfo.y, playerInfo.type).setOrigin(0.5, 0.5).setDisplaySize(MainScene.PLAYER_SIZE, MainScene.PLAYER_SIZE);
   otherPlayer.playerId = playerInfo.playerId;
   self.otherPlayers.add(otherPlayer);
+  // self.physics.add.collider(self.player, otherPlayer);
+
 }
 
 export default class MainScene extends Phaser.Scene {
@@ -19,9 +22,16 @@ export default class MainScene extends Phaser.Scene {
   socket: SocketIOClient.Socket
   target: Phaser.Math.Vector2
   player: Player
+  state: GameState
 
   constructor() {
     super('MainScene')
+    this.state = {
+      playerList: {},
+      items: {},
+      creatures: {},
+      world: ""
+    };
   }
 
   init(data: any) { }
@@ -47,17 +57,21 @@ export default class MainScene extends Phaser.Scene {
     var self = this;
     this.socket = io();
     this.otherPlayers = this.physics.add.group();
-    this.socket.on('currentPlayers', function (players) {
-      Object.keys(players).forEach(function (id) {
-        if (players[id].playerId === self.socket.id) {
-          addPlayer(self, players[id], camera);
-          self.physics.add.collider(self.player, groundLayer);
 
-        } else {
-          addOtherPlayers(self, players[id]);
+    this.socket.on('setState', function (gameState) {
+      self.state = gameState;
+      console.log(gameState);
+
+      addPlayer(self, gameState.playerList[self.socket.id], camera);
+      self.physics.add.collider(self.player, groundLayer);
+
+      Object.keys(gameState.playerList).forEach(function (id) {
+        if (gameState.playerList[id].playerId !== self.socket.id) {
+          addOtherPlayers(self, gameState.playerList[id]);
         }
       });
     });
+
     this.socket.on('newPlayer', function (playerInfo) {
       addOtherPlayers(self, playerInfo);
     });
