@@ -13,6 +13,9 @@ function addOtherPlayers(self, playerInfo) {
   // self.physics.add.collider(self.player, otherPlayer);
 
 }
+function collisionCallback (obj1, obj2) {
+  obj1.setDrag(500);
+}
 
 export default class MainScene extends Phaser.Scene {
 
@@ -63,7 +66,7 @@ export default class MainScene extends Phaser.Scene {
       console.log(gameState);
 
       addPlayer(self, gameState.playerList[self.socket.id], camera);
-      self.physics.add.collider(self.player, groundLayer);
+      self.physics.add.collider(self.player, groundLayer, collisionCallback);
 
       Object.keys(gameState.playerList).forEach(function (id) {
         if (gameState.playerList[id].playerId !== self.socket.id) {
@@ -88,6 +91,7 @@ export default class MainScene extends Phaser.Scene {
     this.input.on('pointerup', (pointer) => {
       this.target.x = pointer.x + camera.worldView.x;
       this.target.y = pointer.y + camera.worldView.y;
+      this.player.setDrag(0);
       this.physics.moveToObject(this.player, this.target, 300);
     });
 
