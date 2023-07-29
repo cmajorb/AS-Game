@@ -2,9 +2,9 @@ import io from 'socket.io-client'
 import { Player } from '../objects/player'
 import { GameState } from '../../types'
 
-function addPlayer(self, playerInfo, camera) {
+function addPlayer(self, playerInfo) {
   self.player = new Player(self, playerInfo);
-  camera.startFollow(self.player);
+  self.cameras.main.startFollow(self.player);
 }
 function addOtherPlayers(self, playerInfo) {
   const otherPlayer = self.add.sprite(playerInfo.x, playerInfo.y, playerInfo.type).setOrigin(0.5, 0.5).setDisplaySize(MainScene.PLAYER_SIZE, MainScene.PLAYER_SIZE);
@@ -17,6 +17,13 @@ function collisionCallback (obj1, obj2) {
   obj1.setDrag(500);
 }
 
+function addItems(self, state) {
+  Object.keys(state.items).forEach(function (id) {
+    let item = state.items[id];
+    self.add.sprite(item.x, item.y, item.type).setDisplaySize(MainScene.PLAYER_SIZE, MainScene.PLAYER_SIZE);
+  });
+}
+
 export default class MainScene extends Phaser.Scene {
 
   static readonly TILE_SIZE = 33;
@@ -26,6 +33,9 @@ export default class MainScene extends Phaser.Scene {
   target: Phaser.Math.Vector2
   player: Player
   state: GameState
+  transporting: boolean
+  world: string
+  groundLayer: any
 
   constructor() {
     super('MainScene')
@@ -35,38 +45,16 @@ export default class MainScene extends Phaser.Scene {
       creatures: {},
       world: ""
     };
-  }
-
-  init(data: any) { }
-  preload() {
-    this.load.image('alien1', 'assets/culug.png');
-    this.load.image('alien2', 'assets/pufcat.png');
-    this.load.image("tiles", "assets/tilesets/example_tileset.png");
-    this.load.tilemapTiledJSON("map", "assets/tilesets/map.json");
-  }
-
-  create() {
-
-    const map = this.make.tilemap({ key: "map", tileWidth: MainScene.TILE_SIZE, tileHeight: MainScene.TILE_SIZE });
-    const tileset = map.addTilesetImage("example_tileset", "tiles");
-    const groundLayer = map.createLayer(0, tileset, 0, 0);
-
-    map.setCollisionByProperty({ collides: true });
-    // groundLayer.renderDebug(this.add.graphics());
-
-    const camera = this.cameras.main;
-    camera.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-
     var self = this;
     this.socket = io();
-    this.otherPlayers = this.physics.add.group();
-
     this.socket.on('setState', function (gameState) {
       self.state = gameState;
-      console.log(gameState);
-
-      addPlayer(self, gameState.playerList[self.socket.id], camera);
-      self.physics.add.collider(self.player, groundLayer, collisionCallback);
+      addItems(self, gameState);
+      addPlayer(self, gameState.playerList[self.socket.id]);
+      self.physics.add.collider(self.player, self.groundLayer, function(obj1, obj2){ collisionCallback(obj1, obj2);
+        self.transporting = true;
+        self.socket.emit('newScene', {currentWorld: self.state.world, destinationWorld: "testWorld"});
+      });
 
       Object.keys(gameState.playerList).forEach(function (id) {
         if (gameState.playerList[id].playerId !== self.socket.id) {
@@ -74,25 +62,20 @@ export default class MainScene extends Phaser.Scene {
         }
       });
     });
-
     this.socket.on('newPlayer', function (playerInfo) {
       addOtherPlayers(self, playerInfo);
     });
+
+    this.socket.on('changeScene', function (data) {
+      self.scene.restart({world: data.world});
+    });
+
     this.socket.on('player_disconnect', function (playerId) {
       self.otherPlayers.getChildren().forEach(function (otherPlayer) {
         if (playerId === otherPlayer.playerId) {
           otherPlayer.destroy();
         }
       });
-    });
-
-    this.target = new Phaser.Math.Vector2();
-
-    this.input.on('pointerup', (pointer) => {
-      this.target.x = pointer.x + camera.worldView.x;
-      this.target.y = pointer.y + camera.worldView.y;
-      this.player.setDrag(0);
-      this.physics.moveToObject(this.player, this.target, 300);
     });
 
     this.socket.on('playerMoved', function (playerInfo) {
@@ -104,8 +87,47 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
+  init(data: any) { 
+    if(data.world) {
+      this.world = data.world
+    } else {
+      this.world = "mainWorld"
+    }
+  }
+  preload() {
+    this.load.image('alien1', 'assets/culug.png');
+    this.load.image('alien2', 'assets/pufcat.png');
+    this.load.image('coin', 'assets/coin.png');
+    this.load.image("tiles", "assets/tilesets/example_tileset.png");
+    this.load.tilemapTiledJSON(this.world, "assets/tilesets/" + this.world + ".json");
+  }
+
+  create() {
+    const map = this.make.tilemap({ key: this.world, tileWidth: MainScene.TILE_SIZE, tileHeight: MainScene.TILE_SIZE });
+    const tileset = map.addTilesetImage("example_tileset", "tiles");
+    this.groundLayer = map.createLayer(0, tileset, 0, 0);
+
+    map.setCollisionByProperty({ collides: true });
+
+    this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+    
+    this.socket.emit('startWorld', {world: this.world})
+    this.otherPlayers = this.physics.add.group();
+    this.transporting = false;
+
+    this.target = new Phaser.Math.Vector2();
+
+    this.input.on('pointerup', (pointer) => {
+      this.target.x = pointer.x + this.cameras.main.worldView.x;
+      this.target.y = pointer.y + this.cameras.main.worldView.y;
+      this.player.setDrag(0);
+      this.physics.moveToObject(this.player, this.target, 300);
+    });
+
+  }
+
   update() {
-    if (this.player && this.player.body instanceof Phaser.Physics.Arcade.Body) {
+    if (this.player && this.player.body instanceof Phaser.Physics.Arcade.Body && !this.transporting) {
       if (this.player.body.speed > 0) {
         const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.target.x, this.target.y);
         if (d < 10) {
@@ -113,7 +135,7 @@ export default class MainScene extends Phaser.Scene {
         }
       }
       if (this.player.hasMoved()) {
-        this.socket.emit('playerMovement', { x: this.player.x, y: this.player.y });
+        this.socket.emit('playerMovement', { x: this.player.x, y: this.player.y, world: this.state.world });
       }
       this.player.oldPosition = new Phaser.Math.Vector2(this.player.x, this.player.y);
     }

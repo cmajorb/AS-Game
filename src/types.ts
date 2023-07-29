@@ -1,8 +1,12 @@
 export type GameState = {
+    world: string,
     playerList: { [key: string]: PlayerType },
     items: { [key: string]: Item },
-    creatures: { [key: string]: Creature },
-    world: string
+    creatures: { [key: string]: Creature }
+  }
+
+  export type GameStates = {
+    allGameStates: { [key: string]: GameState }
   }
   
   export type  PlayerType = {
