@@ -57,6 +57,13 @@ export function clientConnection(io: any) {
       socket.emit('setState', allGameStates.allGameStates[data.world]);
     });
 
+    socket.on('sendMessage', function (data) {
+      let world = data.world;
+      let player = allGameStates.allGameStates[world].playerList[socket.id];
+      socket.to(world).emit('publishMessage', {"message" : data.message, "sender" : player.name});
+      socket.emit('publishMessage', {"message" : data.message, "sender" : player.name});
+    });
+    
     socket.on('playerMovement', function (movementData) {
       let world = movementData.world
    
@@ -73,6 +80,7 @@ export function clientConnection(io: any) {
       socket.leave(currentworld);
       socket.join(newWorld);
       socket.emit('changeScene', {world: newWorld});
+      socket.to(currentworld).emit('player_disconnect', socket.id);
       let player = allGameStates.allGameStates[currentworld].playerList[socket.id];
       allGameStates.allGameStates[newWorld].playerList[socket.id] = player;
       delete allGameStates.allGameStates[currentworld].playerList[socket.id];

@@ -3,7 +3,7 @@ import MainScene from './scenes/mainScene'
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  parent: 'phaser-example',
+  parent: 'phaser-game',
   width: 800,
   height: 600,
   physics: {

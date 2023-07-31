@@ -85,6 +85,20 @@ export default class MainScene extends Phaser.Scene {
         }
       });
     });
+
+    this.socket.on('publishMessage', function (data) {
+      const messages = document.getElementById('allmessages');
+      messages!.innerHTML =  "<br>" + data.sender + ": " + data.message + messages!.innerHTML;
+    });
+
+    const form = document.getElementById('sendmessage');
+    form?.addEventListener('submit', function handleClick(e) {
+      e.preventDefault();
+      const input = document.getElementById('message') as HTMLInputElement | null;
+      self.socket.emit('sendMessage', {message: input?.value, world: self.state.world});
+      input!.value = "";
+    });
+
   }
 
   init(data: any) { 

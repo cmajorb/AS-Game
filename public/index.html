@@ -1,11 +1,34 @@
 <!doctype html>
 <html>
-  <head>
-    <title>phaser3template</title>
-    <link rel="stylesheet" href="mystyle.css">    
-  </head>
-  <body>
-    <div class = "centered" id="phaser-game"></div>
-    <script src="bundle-front.js"></script>
-  </body>
+
+<head>
+  <title>phaser3template</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel="stylesheet" href="mystyle.css">
+
+</head>
+
+<body>
+  <div style="background-color: rgb(222, 222, 222); width:800px; margin: auto;">
+    <div id="phaser-game"></div>
+
+      <form id="sendmessage">
+        <div class="input-group">
+          <input class="form-control form-control-lg mx-sm-3 mb-2" type="text" placeholder="Message" id="message">
+          <span class="input-group-btn">
+            <button type="submit" class="btn btn-primary mx-sm-3 mb-2">Submit</button>
+          </span>
+        </div>
+      </form>
+
+    <div class="overflow-auto" style="height:100px;">
+      <p id="allmessages" class="text-break">
+      </p>
+    </div>
+  </div>
+  <script src="bundle-front.js"></script>
+
+</body>
+
 </html>
