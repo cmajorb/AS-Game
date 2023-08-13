@@ -13,6 +13,9 @@ const config: Phaser.Types.Core.GameConfig = {
       gravity: { y: 0 }
     }
   },
+  dom: {
+    createContainer: true
+},
   scene: [MainScene]
 }
 

@@ -2,6 +2,33 @@ import io from 'socket.io-client'
 import { Player } from '../objects/player'
 import { GameState } from '../../types'
 
+function createRoomSelect(self) {
+  const screenCenterX = self.cameras.main.worldView.x + self.cameras.main.width / 2;
+  const screenCenterY = self.cameras.main.worldView.y + self.cameras.main.height / 2;
+
+    const roomSelect = self.add.dom(screenCenterX, screenCenterY).createFromCache('roomselect');
+    roomSelect.addListener('click');
+    roomSelect.on('click', function (this: any, event)
+        {
+            if (event.target.name === 'submitButton')
+            {
+                const selectedRoom = this.getChildByName('roomSelect');
+                if (selectedRoom.value !== '')
+                {
+                    this.removeListener('click');
+                    this.destroy();
+                    self.transporting = false;
+                    console.log(selectedRoom.value);
+                    if(selectedRoom.value != self.state.world) {
+                      self.socket.emit('newScene', {currentWorld: self.state.world, destinationWorld: selectedRoom.value});
+                    }
+                }
+            } else if(event.target.name === 'cancelButton') {
+              self.transporting = false;
+              this.destroy();
+            }
+        });
+}
 function addPlayer(self, playerInfo) {
   self.player = new Player(self, playerInfo);
   self.cameras.main.startFollow(self.player);
@@ -52,8 +79,10 @@ export default class MainScene extends Phaser.Scene {
       addItems(self, gameState);
       addPlayer(self, gameState.playerList[self.socket.id]);
       self.physics.add.collider(self.player, self.groundLayer, function(obj1, obj2){ collisionCallback(obj1, obj2);
-        self.transporting = true;
-        self.socket.emit('newScene', {currentWorld: self.state.world, destinationWorld: "testWorld"});
+        if(!self.transporting) {
+          self.transporting = true;
+          createRoomSelect(self);
+        }
       });
 
       Object.keys(gameState.playerList).forEach(function (id) {
@@ -114,6 +143,7 @@ export default class MainScene extends Phaser.Scene {
     this.load.image('coin', 'assets/coin.png');
     this.load.image("tiles", "assets/tilesets/example_tileset.png");
     this.load.tilemapTiledJSON(this.world, "assets/tilesets/" + this.world + ".json");
+    this.load.html('roomselect', 'assets/text/roomselect.html');
   }
 
   create() {
@@ -132,10 +162,12 @@ export default class MainScene extends Phaser.Scene {
     this.target = new Phaser.Math.Vector2();
 
     this.input.on('pointerup', (pointer) => {
-      this.target.x = pointer.x + this.cameras.main.worldView.x;
-      this.target.y = pointer.y + this.cameras.main.worldView.y;
-      this.player.setDrag(0);
-      this.physics.moveToObject(this.player, this.target, 300);
+      if(!this.transporting) {
+        this.target.x = pointer.x + this.cameras.main.worldView.x;
+        this.target.y = pointer.y + this.cameras.main.worldView.y;
+        this.player.setDrag(0);
+        this.physics.moveToObject(this.player, this.target, 300);
+      }
     });
 
   }

@@ -2,7 +2,7 @@ import { Game } from 'phaser';
 import { PlayerType, Item, GameState, GameStates } from '../types'
 
 export function clientConnection(io: any) {
-  let worlds = ["mainWorld", "testWorld"];
+  let worlds = ["mainWorld", "1", "2", "3"];
   const allGameStates: GameStates = {allGameStates: {}};
   for (let world of worlds) {
     let newWorld = { playerList: {}, items: {}, creatures: {}, world : world} as GameState ;
